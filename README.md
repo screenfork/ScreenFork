@@ -10,6 +10,7 @@ ScreenFork is the Sketchapp plugin that export screens and their variants based 
 * To export to a different folder add a path in the Artboard name.
 * Pages or Artboards that have a prefix of “-“ are ingored during the export.
 
-a) {Page}-{ArtboardName}.png or .jpg
-b) {Page}-{ArtboardName}-{Fork}.png or .jpg
-c) Spaces are changed to “-“
+Name conventions:
+1. {Page}-{ArtboardName}.png or .jpg
+2. {Page}-{ArtboardName}-{Fork}.png or .jpg
+3. Spaces are changed to “-“

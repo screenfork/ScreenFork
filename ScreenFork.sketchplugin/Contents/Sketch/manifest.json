@@ -1,0 +1,55 @@
+{
+  "author" : "",
+  "commands" : [
+    {
+      "script" : "script.cocoascript",
+      "name" : "Export all",
+      "handlers" : {
+        "run" : "exportAll"
+      },
+      "shortcut" : "cmd alt e",
+      "identifier" : "com.medvednick.screenfork.exportall"
+    },
+    {
+      "script" : "script.cocoascript",
+      "name" : "Export selected Artboards",
+      "handlers" : {
+        "run" : "exportSelected"
+      },
+      "shortcut" : "cmd alt a",
+      "identifier" : "com.medvednick.screenfork.exportselected"
+    },
+    {
+      "script" : "script.cocoascript",
+      "name" : "Export current Page",
+      "handlers" : {
+        "run" : "exportCurrentPage"
+      },
+      "shortcut" : "cmd alt p",
+      "identifier" : "com.medvednick.screenfork.exportpage"
+    },
+    {
+      "script" : "script.cocoascript",
+      "name" : "Remove all exported Screens",
+      "handlers" : {
+        "run" : "removeExported"
+      },
+      "shortcut" : "cmd alt r",
+      "identifier" : "com.medvednick.screenfork.removeexported"
+    }
+  ],
+  "menu" : {
+    "items" : [
+      "com.medvednick.screenfork.exportall",
+      "com.medvednick.screenfork.exportselected",
+      "com.medvednick.screenfork.exportpage",
+      "com.medvednick.screenfork.removeexported",
+    ],
+    "title" : "🔱 ScreenFork"
+  },
+  "identifier" : "com.medvednick.screenfork",
+  "version" : "1.0",
+  "description" : "Allows to export pages with variants depending on their name prefixes",
+  "authorEmail" : "medvednick@yandex.ru",
+  "name" : "ScreenFork"
+}

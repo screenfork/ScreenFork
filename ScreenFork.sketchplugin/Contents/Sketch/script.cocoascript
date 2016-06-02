@@ -1,0 +1,305 @@
+String.prototype.replaceAll = function(search, replacement) {
+    return this.split(search).join(replacement)
+}
+
+String.prototype.excluded = function() {
+    return this.startsWith('-')
+}
+
+String.prototype.isVariant = function() {
+    return this.startsWith('&')
+}
+
+String.prototype.createName = function() {
+    return this.replaceAll('&', '').replaceAll(' - ', '-').replaceAll(' ', '-').replaceAll('--', '-').replaceAll('--', '-')
+}
+
+var writeTextToFile = function(text, filePath) {
+    var t = [NSString stringWithFormat:@"%@", text];
+    var f = [NSString stringWithFormat:@"%@", filePath];
+    return [t writeToFile:f atomically:true encoding:NSUTF8StringEncoding error:nil];
+}
+
+var readTextFromFile = function(filePath) {
+    var fileManager = [NSFileManager defaultManager];
+    if([fileManager fileExistsAtPath:filePath]) {
+        return [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
+    }
+    return nil;
+}
+
+var jsonFromFile = function(filePath, mutable) {
+    var data = [NSData dataWithContentsOfFile:filePath];
+    var options = mutable == true ? NSJSONReadingMutableContainers : 0
+    return [NSJSONSerialization JSONObjectWithData:data options:options error:nil];
+}
+
+var saveJsonToFile = function(jsonObj, filePath) {
+    writeTextToFile(stringify(jsonObj), filePath);
+}
+
+var stringify = function(obj, prettyPrinted) {
+    var prettySetting = prettyPrinted ? NSJSONWritingPrettyPrinted : 0,
+    jsonData = [NSJSONSerialization dataWithJSONObject:obj options:prettySetting error:nil];
+    return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+}
+
+var createFolderAtPath = function(pathString) {
+    var fileManager = [NSFileManager defaultManager];
+    if([fileManager fileExistsAtPath:pathString]) return true;
+    return [fileManager createDirectoryAtPath:pathString withIntermediateDirectories:true attributes:nil error:nil];
+}
+
+var removeFileOrFolder = function(filePath) {
+    [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil]
+}
+
+var readPluginPath = function() {
+    var sketchPluginsPath = plugin.context.scriptPath.replace(/Sketch([\w \/ -])*.cocoascript$/, "");
+    return {
+        sketchPluginsPath: sketchPluginsPath,
+        pluginFolder: 'Resources'
+    }
+}
+
+var defaultsPath = function() {
+    var folders = readPluginPath();
+    return folders.sketchPluginsPath + folders.pluginFolder + '/defaults.json'
+}
+
+var plugin = {
+    context: null,
+    directory: '',
+    action: 'export',
+    artboards: []
+}
+
+var makeSliceAndResizeWithFactor = function(layer, factor) {
+    var loopLayerChildren = [[layer children] objectEnumerator],
+        rect = [MSSliceTrimming trimmedRectForSlice:layer],
+        useSliceLayer = false,
+        slice
+
+    while (layerChild = [loopLayerChildren nextObject]) {
+        if ([layerChild class] == 'MSSliceLayer') {
+            rect  = [MSSliceTrimming trimmedRectForSlice:layerChild]
+            useSliceLayer = true
+        }
+    }
+
+    slice = [MSExportRequest requestWithRect:rect scale:factor]
+    slice.setBackgroundColor(layer.backgroundColor())
+    if (!useSliceLayer) {
+        slice.shouldTrim = true
+    }
+    return slice
+}
+
+var updateDirectory = function() {
+    var panel = [NSOpenPanel openPanel]
+    [panel setMessage:"Please select export path"]
+    [panel setCanChooseDirectories: true]
+    [panel setCanChooseFiles: false]
+    [panel setCanCreateDirectories: true]
+    [panel setDirectoryURL:[NSURL fileURLWithPath:plugin.context.document.fileURL().URLByDeletingLastPathComponent().path()]]
+
+    if ([panel runModal] == NSOKButton) {
+        plugin.directory = [panel filename]
+        saveJsonToFile({ 'directory': plugin.directory }, defaultsPath())
+        return true
+    }
+    return false
+}
+
+var exportArtboard = function(artboard, page) {
+
+    var formats = artboard.exportOptionsGeneric().exportFormatsGeneric()
+    var artboardName = artboard.name()
+    var folder = ''
+
+    if (artboardName.indexOf('/') != -1) {
+        folder = artboardName.substring(0, artboardName.lastIndexOf('/')) + '/'
+        artboardName = artboardName.substring(artboardName.lastIndexOf('/')+1)
+    }
+    var filename = folder + page.name().replace(/^- |^-/, '') + '-' + artboardName
+
+    if (formats.count() == 0) {
+
+        var files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:plugin.directory error:nil];
+        if (files != null) {
+            for (var f = 0; f < files.count(); f++) {
+                var file = files.objectAtIndex(f)
+                if (file.startsWith(filename.createName())) {
+                    removeFileOrFolder(plugin.directory + '/' + file)
+                }
+            }
+        }
+    }
+
+    for (var f = 0; f < formats.count(); f++) {
+        var format = formats.objectAtIndex(f)
+
+        log('\n' + filename + ':')
+
+        var children = artboard.children()
+        var hidden = []
+        var visible = []
+
+        for (var k = 0; k < children.count(); k++) {
+            var child = children[k]
+            if (child.name().isVariant() == false) continue
+            if (child.isVisible()) {
+                visible.push(child)
+            }
+            else {
+                hidden.push(child)
+            }
+            child.setIsVisible(false)
+        }
+
+        var handleVariants = function(element, name) {
+
+            var sameLevelVariants = []
+            for (var k = 0; k < children.count(); k++) {
+                var child = children[k]
+                if (child.parentGroup() != element) continue
+                if (child.name().isVariant() == false) continue
+                sameLevelVariants.push(child)
+            }
+
+            for (var m = 0; m < sameLevelVariants.length; m++) {
+                for (var n = 0; n < sameLevelVariants.length; n++) {
+                    sameLevelVariants[n].setIsVisible(false)
+                }
+
+                var variant = sameLevelVariants[m]
+                var variantName = name + '-' + variant.name()
+                variant.setIsVisible(true)
+
+                removeLayerAndExportIfNeeded(artboard, page, variantName, format)
+                handleVariants(variant, variantName)
+            }
+        }
+
+        var variants = []
+        for (var k = 0; k < children.count(); k++) {
+            var child = children[k]
+            if (child.name().isVariant() == false) continue
+            variants.push(child)
+        }
+
+        removeLayerAndExportIfNeeded(artboard, page, filename, format)
+        if (variants.length != 0) {
+            handleVariants(artboard, filename)
+        }
+
+        for (var k = 0; k < visible.length; k++) {
+            var child = visible[k]
+            child.setIsVisible(true)
+        }
+        for (var k = 0; k < hidden.length; k++) {
+            var child = hidden[k]
+            child.setIsVisible(false)
+        }
+    }
+
+    var fullFolderPath = plugin.directory + '/' + folder
+    var filesInFolder = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:fullFolderPath error:nil];
+    if (filesInFolder != null && filesInFolder.count != null && filesInFolder.count() == 0) {
+        removeFileOrFolder(fullFolderPath)
+        log('deleted folder: ' + fullFolderPath)
+    }    
+}
+
+var exportPage = function(page) {
+    var currentPage = plugin.context.document.currentPage()
+    plugin.context.document.setCurrentPage(page)
+
+    var artboards = page.artboards()
+    for (var j = 0; j < artboards.count(); j++) {    
+        exportArtboard(artboards[j], page)
+    }
+    plugin.context.document.setCurrentPage(currentPage)
+}
+
+var removeLayerAndExportIfNeeded = function(layer, page, filename, format) {
+    removeFileForLayer(filename, format)
+    if (plugin.action == 'export' && !layer.name().excluded() && !page.name().excluded()) {
+        exportLayer(layer, filename, format)
+    }
+    else {
+        log('deleted: ' + filenameForFormat(filename, format))
+    }
+}
+
+var exportLayer = function(layer, filename, format) {
+    var path = filenameForFormat(filename, format)
+    plugin.context.document.saveArtboardOrSlice_toFile(makeSliceAndResizeWithFactor(layer, format.scale()), path)
+    plugin.artboards.push(path)
+    log(path)
+}
+
+var removeFileForLayer = function(filename, format) {
+    var path = filenameForFormat(filename, format)
+    removeFileOrFolder(path)
+}
+
+var filenameForFormat = function(filename, format) {
+    if (plugin.directory.length == 0) plugin.directory = plugin.context.document.fileURL().URLByDeletingLastPathComponent().path()
+    var dir = plugin.directory + '/' + filename.createName()
+    return dir.replace('file://', '') + format.name() + '.' + format.fileFormat() 
+}
+
+var alert = function(message) {
+    plugin.context.document.showMessage(message)
+}
+
+var performCurrentActionForAll = function() {
+    var pages = plugin.context.document.pages()
+    for (var i = 0; i < pages.count(); i++) {
+        exportPage(pages[i])
+    }
+}
+
+// --- MENU ITEMS ---
+
+var exportAll = function(context) {
+    plugin.action = 'remove'
+    plugin.context = context
+    if (!updateDirectory()) return
+    performCurrentActionForAll()
+    plugin.action = 'export'
+    performCurrentActionForAll()
+    alert('Artboards exported')
+}
+
+var exportSelected = function(context) {
+    plugin.action = 'export'
+    plugin.context = context
+    var selection = context.selection
+    if (selection.count() == 0) {
+        alert('No selection!')
+        return
+    }
+    if (!updateDirectory()) return
+    for (var i = 0; i < selection.count(); i++) {
+        exportArtboard(selection[i], context.document.currentPage())
+    }
+    alert('Selected artboards exported')
+}
+
+var exportCurrentPage = function(context) {
+    plugin.action = 'export'
+    plugin.context = context
+    if (!updateDirectory()) return
+    exportPage(context.document.currentPage())
+    alert('Current page exported') 
+}
+
+var removeExported = function(context) {
+    plugin.action = 'remove'
+    plugin.context = context
+    plugin.directory = jsonFromFile(defaultsPath(), true).directory
+    performCurrentActionForAll()
+    alert('Exported assets deleted')  
+}

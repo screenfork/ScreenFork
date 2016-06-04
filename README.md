@@ -2,8 +2,8 @@
 
 Sketchapp plugin that exports screen and their variants based on the layer prefix.
 
-[[https://github.com/screenfork/ScreenFork/blob/master/images/variant_1.png]]
-[[https://github.com/screenfork/ScreenFork/blob/master/images/variant_2.png]]
+![variant_1](https://github.com/screenfork/ScreenFork/blob/master/images/variant_1.png)
+![variant_2](https://github.com/screenfork/ScreenFork/blob/master/images/variant_2.png)
 
 ## How it works
 
@@ -15,7 +15,7 @@ Sketchapp plugin that exports screen and their variants based on the layer prefi
 * To export to a different folder add a path in the Artboard name.
 * Pages or Artboards that have a prefix of “-“ are ingored during the export.
 
-[[https://github.com/screenfork/ScreenFork/blob/master/images/exportable.png]]
+![exportable](https://github.com/screenfork/ScreenFork/blob/master/images/exportable.png)
 
 ## Name conventions:
 * {Page}-{ArtboardName}.png or .jpg
@@ -24,4 +24,4 @@ Sketchapp plugin that exports screen and their variants based on the layer prefi
 
 ## Shortcuts
 
-[[https://github.com/screenfork/ScreenFork/blob/master/images/shortcuts.png]]
+![shortcuts](https://github.com/screenfork/ScreenFork/blob/master/images/shortcuts.png)

@@ -15,7 +15,7 @@ Sketchapp plugin that exports screen and their variants based on the layer prefi
 * To export to a different folder add a path in the Artboard name.
 * Pages or Artboards that have a prefix of “-“ are ingored during the export.
 
-![exportable](https://github.com/screenfork/ScreenFork/blob/master/images/exportable.png =213x)
+![exportable](https://github.com/screenfork/ScreenFork/blob/master/images/exportable.png)
 
 ## Name conventions:
 * {Page}-{ArtboardName}.png or .jpg

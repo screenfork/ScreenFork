@@ -43,7 +43,7 @@
       "com.medvednick.screenfork.exportall",
       "com.medvednick.screenfork.exportselected",
       "com.medvednick.screenfork.exportpage",
-      "com.medvednick.screenfork.removeexported",
+      "com.medvednick.screenfork.removeexported"
     ],
     "title" : "🔱 ScreenFork"
   },
